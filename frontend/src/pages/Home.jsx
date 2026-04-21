@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Monitor, X } from "lucide-react";
+import { BookOpen, Monitor, X, Sparkles } from "lucide-react";
 
 import BrowserShell from "@/components/browser/BrowserShell";
 import StatusBanner from "@/components/browser/StatusBanner";
 import { MenuIcons } from "@/components/browser/TopNavBar";
 import { getRecent, clearRecent } from "@/lib/recent";
 import { getHealth } from "@/lib/api";
+
+const QUICK_LAUNCH = [
+  { label: "ChatGPT",    url: "https://chatgpt.com",            mode: "live",   tone: "#10a37f", hint: "Ask anything" },
+  { label: "Wikipedia",  url: "https://en.wikipedia.org",       mode: "reader", tone: "#202122", hint: "Encyclopedia" },
+  { label: "Hacker News",url: "https://news.ycombinator.com",   mode: "reader", tone: "#ff6600", hint: "Tech news" },
+  { label: "BBC News",   url: "https://www.bbc.com/news",       mode: "reader", tone: "#bb1919", hint: "World news" },
+  { label: "arXiv",      url: "https://arxiv.org",              mode: "reader", tone: "#b31b1b", hint: "Research" },
+  { label: "Reddit",     url: "https://old.reddit.com",         mode: "live",   tone: "#ff4500", hint: "Classic web" },
+  { label: "Google",     url: "https://www.google.com",         mode: "live",   tone: "#4285f4", hint: "Search" },
+  { label: "DuckDuckGo", url: "https://duckduckgo.com",         mode: "live",   tone: "#de5833", hint: "Private search" },
+];
 
 function hostnameOf(url) {
   try {
@@ -158,6 +169,39 @@ export default function Home() {
           Works best for articles, blogs, news, and documentation. Highly
           interactive apps may only partially work.
         </p>
+
+        <div className="cb-quicklaunch" data-testid="home-quicklaunch">
+          <h3>
+            <Sparkles size={12} style={{ verticalAlign: -2, marginRight: 6 }} />
+            Quick launch
+          </h3>
+          <div className="cb-ql-grid">
+            {QUICK_LAUNCH.map((q) => (
+              <button
+                key={q.url}
+                type="button"
+                className="cb-ql-card"
+                onClick={() =>
+                  navigate(`/${q.mode}?url=${encodeURIComponent(q.url)}`)
+                }
+                data-testid={`quicklaunch-${q.label.toLowerCase().replace(/\s+/g, "-")}`}
+                title={`${q.label} — ${q.mode === "live" ? "Live Mode" : "Reader Mode"}`}
+              >
+                <span
+                  className="cb-ql-dot"
+                  style={{ background: q.tone }}
+                  aria-hidden="true"
+                >
+                  {q.label.charAt(0)}
+                </span>
+                <span className="cb-ql-name">{q.label}</span>
+                <span className="cb-ql-mode">
+                  {q.mode === "live" ? "Live" : "Reader"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {recent.length > 0 && (
           <div className="cb-recent" data-testid="home-recent">
