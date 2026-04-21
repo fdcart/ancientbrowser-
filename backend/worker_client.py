@@ -68,13 +68,13 @@ async def _request(method: str, path: str, json: Optional[dict] = None, timeout:
     except httpx.HTTPError as exc:
         raise WorkerUnavailable(f"Worker unreachable: {exc}") from exc
 
-    if r.status_code >= 500:
-        raise WorkerError(f"Worker error {r.status_code}: {r.text[:200]}")
     if r.status_code >= 400:
         try:
-            return {"error": r.json(), "_status": r.status_code}
+            body = r.json()
+            detail = body.get("error") or body.get("detail") or body
         except Exception:  # noqa: BLE001
-            raise WorkerError(f"Worker error {r.status_code}")
+            detail = r.text[:200]
+        raise WorkerError(f"Worker error {r.status_code}: {detail}")
 
     # Screenshot endpoint returns JSON with base64 already; all endpoints JSON.
     try:
