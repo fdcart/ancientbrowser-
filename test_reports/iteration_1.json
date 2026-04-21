@@ -1,0 +1,34 @@
+{
+  "summary": "CloudBrowse MVP full e2e testing (backend + frontend). Backend: 15/15 pytest tests passed covering health, Reader Mode (SSRF guards for localhost/169.254.169.254/ftp/empty, auto https-prefix, successful Wikipedia extraction, PDF 422, HTML sanitization verified — no <script>/<iframe>/<style>/on* attrs), Live Mode graceful 503s (start + frame) when worker unconfigured, SSRF-before-worker-check, and rate limiting 429 after 30 reader requests/min. Frontend: homepage loads with tab strip/CLOUDBROWSE badge/Cloud•Browse wordmark, Reader/Live buttons correctly disabled-when-empty and enabled-when-filled, worker status shows 'not configured'. Reader flow navigates to /reader, extracts Wikipedia Safari article, renders sanitized content inside Chrome shell. Reader toolbar font+/- (17→18→16 px), theme cycle light→sepia→dark, spacing cycle tight→normal→loose all work. Menu dropdown correctly shows per-page items (Home: Reader/Live/Clear recent — 3; Reader: Switch-to-Live/Open-original/Reload — 3; Live: Switch-to-Reader/Terminate — 2). Address bar submit on /reader reloads with new URL (Firefox page). Live Mode shows proper red error banner 'Live Mode is temporarily unavailable…' with 'Use Reader Mode' button that navigates back to /reader. Recent URLs appear on home after successful reader fetch. NotFound route shows 'Page not found' + 'Back to Home'. No critical issues found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cloudbrowse_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py: `_unavail_error()` raises HTTPException but callers use `except WorkerUnavailable: _unavail_error()` — the HTTPException bubbles correctly, but static type-checkers may flag 'missing return'. Consider `raise _unavail_error()` or have it return the exception. Functionally fine.",
+    "reader.py: `_absolutize` imports urljoin but silently swallows any exception via bare except — acceptable, but could log at debug level.",
+    "Reader rate limit (30/min) shared across all clients on the same egress IP (x-forwarded-for first hop). On Vercel/edge that's fine, but in this preview environment testing from the same origin as the browser means backend tests can exhaust the quota and cause user-facing 429 if tests/UI run concurrently. Consider a slightly higher limit or per-session cookie-based bucket.",
+    "worker_client._request: when worker returns 4xx it returns `{error, _status}` instead of raising; callers (e.g. live_start) don't check `_status` and would return that dict as 200 to the client. Only relevant when a real worker is connected; in this unconfigured env it never triggers. Worth revisiting once worker is added.",
+    "Live.jsx start session: on successful start `addRecent` is called with `res.title || target`, but backend worker `/sessions` response schema depends on the worker contract (not defined here). Fine for MVP."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_cloudbrowse_api.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "N/A — no auth required",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Rate limit is 30/min per IP on /api/reader/open. If running test suite + browser tests together, space them out or the UI will see 429. PDF test uses https://css4.pub/2015/usenix/example.pdf. Live Mode is expected to return 503 — that's the correct behavior. Backend URL is REACT_APP_BACKEND_URL from /app/frontend/.env.",
+  "rca of the issue": "N/A — no bugs found"
+}
