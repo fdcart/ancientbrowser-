@@ -1,0 +1,23 @@
+# Do NOT ship the worker or local dev artifacts to Vercel.
+worker/
+node_modules/
+frontend/node_modules/
+frontend/build/
+backend/__pycache__/
+api/__pycache__/
+**/__pycache__/
+.venv/
+.pytest_cache/
+tests/
+test_reports/
+memory/
+*.log
+.DS_Store
+
+# local env overrides
+.env
+frontend/.env.local
+backend/.env
+
+# playwright browsers (worker-only, far too large for Vercel)
+/pw-browsers/

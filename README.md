@@ -120,18 +120,59 @@ CloudBrowse therefore treats Vercel as the **control plane** (frontend + lightwe
 
 ### Frontend + API on Vercel
 
+> **Heads-up:** if you pasted a config like
+> ```json
+> { "experimentalServices": { ... } }
+> ```
+> that is an Emergent-preview-only field. Vercel does not recognize it and will error out. Use the `vercel.json` shipped in this repo instead (see below).
+
+**Repo layout expected by Vercel:**
+
+```
+/  (root of what you push to GitHub)
+├── api/
+│   ├── index.py          # Vercel serverless entrypoint — re-exports FastAPI `app`
+│   └── requirements.txt  # Python deps for the serverless runtime
+├── backend/              # Actual FastAPI code (reader.py, url_validator.py, …)
+├── frontend/             # CRA app
+├── worker/               # NOT deployed to Vercel (see below)
+├── vercel.json
+└── .vercelignore
+```
+
+**`vercel.json` (included, do not replace with experimentalServices):**
+
+```json
+{
+  "version": 2,
+  "buildCommand": "cd frontend && yarn install --frozen-lockfile && yarn build",
+  "outputDirectory": "frontend/build",
+  "installCommand": "echo 'skip root install'",
+  "framework": null,
+  "functions": { "api/index.py": { "runtime": "@vercel/python@4.3.1", "maxDuration": 30 } },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/((?!static/|assets/|favicon.ico|manifest.json|robots.txt).*)", "destination": "/index.html" }
+  ]
+}
+```
+
+**Steps:**
+
 1. Push this repo to GitHub.
-2. `vercel link` in the project root (or import in the Vercel dashboard).
+2. In Vercel, click **Add New… → Project** and import the repo. Do **not** pick a framework preset — `vercel.json` handles it (`"framework": null`).
 3. In **Project Settings → Environment Variables**, set:
 
-   | Variable                      | Value                                                |
-   |-------------------------------|------------------------------------------------------|
-   | `REACT_APP_BACKEND_URL`       | The deployed app URL (e.g. `https://<app>.vercel.app`) |
-   | `REMOTE_BROWSER_WORKER_URL`   | URL of the worker service (see below)                 |
-   | `REMOTE_BROWSER_WORKER_TOKEN` | Same value as the worker’s `WORKER_SHARED_TOKEN`     |
-   | `MONGO_URL`, `DB_NAME`        | Any MongoDB host (Atlas works great)                  |
+   | Variable                      | Example value                                          | Required |
+   |-------------------------------|--------------------------------------------------------|----------|
+   | `REACT_APP_BACKEND_URL`       | *(leave empty for same-origin)*                        | No       |
+   | `REMOTE_BROWSER_WORKER_URL`   | `https://cloudbrowse-worker.fly.dev`                   | For Live Mode |
+   | `REMOTE_BROWSER_WORKER_TOKEN` | same value as the worker's `WORKER_SHARED_TOKEN`       | If worker auth is on |
+   | `MONGO_URL`                   | Mongo Atlas URI                                        | Optional (analytics) |
+   | `DB_NAME`                     | e.g. `cloudbrowse`                                     | Optional |
 
-4. The repo ships a FastAPI server at `/app/backend/server.py` that matches the Vercel API contract 1:1. When porting to Next.js, each `@api.<method>("/…")` handler maps directly to a route handler under `app/api/…/route.ts`.
+4. Hit **Deploy**. The first build installs `api/requirements.txt` into a Python layer and builds the CRA app.
+5. Live Mode will light up once `REMOTE_BROWSER_WORKER_URL` is pointed at your deployed worker.
 
 ### Worker (Playwright) on Railway / Fly.io / Render / VPS
 

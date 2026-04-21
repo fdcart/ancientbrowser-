@@ -14,7 +14,6 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, HTTPException, Request
-from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
 
@@ -32,9 +31,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger("cloudbrowse")
 
-mongo_url = os.environ["MONGO_URL"]
-mongo_client = AsyncIOMotorClient(mongo_url)
-db = mongo_client[os.environ["DB_NAME"]]
+# MongoDB is optional — only used for best-effort reader_log analytics.
+# On Vercel serverless, most users don't configure it; that's fine.
+mongo_client = None
+db = None
+mongo_url = os.environ.get("MONGO_URL")
+db_name = os.environ.get("DB_NAME")
+if mongo_url and db_name:
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
+
+        mongo_client = AsyncIOMotorClient(mongo_url)
+        db = mongo_client[db_name]
+    except Exception:  # noqa: BLE001
+        logger.warning("Mongo client failed to initialize; analytics disabled", exc_info=True)
 
 app = FastAPI(title="CloudBrowse API", version="0.1.0")
 api = APIRouter(prefix="/api")
@@ -124,18 +134,19 @@ async def reader_open(body: OpenRequest, request: Request):
         logger.exception("Reader failed for %s", safe_url)
         raise HTTPException(status_code=500, detail="Reader Mode failed") from exc
 
-    # Log to Mongo for analytics (non-blocking best-effort)
-    try:
-        await db.reader_log.insert_one(
-            {
-                "url": safe_url,
-                "final_url": article.final_url,
-                "title": article.title,
-                "text_length": article.text_length,
-            }
-        )
-    except Exception:  # noqa: BLE001
-        logger.warning("Failed to log reader event", exc_info=True)
+    # Log to Mongo for analytics (non-blocking best-effort; skipped on Vercel when Mongo not configured)
+    if db is not None:
+        try:
+            await db.reader_log.insert_one(
+                {
+                    "url": safe_url,
+                    "final_url": article.final_url,
+                    "title": article.title,
+                    "text_length": article.text_length,
+                }
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("Failed to log reader event", exc_info=True)
 
     return ReaderResponse(
         url=article.url,
@@ -269,4 +280,5 @@ app.add_middleware(
 
 @app.on_event("shutdown")
 async def _shutdown():
-    mongo_client.close()
+    if mongo_client is not None:
+        mongo_client.close()
