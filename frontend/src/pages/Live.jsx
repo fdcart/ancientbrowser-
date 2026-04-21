@@ -60,6 +60,7 @@ export default function Live() {
         const res = await liveStart(target);
         setSessionId(res.session_id);
         sessionRef.current = res.session_id;
+        if (res.frame) setFrame(res.frame);
         setStatus("ready");
         addRecent({ url: target, title: res.title || target });
         markAction();
@@ -98,13 +99,31 @@ export default function Live() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlParam]);
 
-  // close on unmount
+  // close on unmount + on page hide/unload (Playwright tests, tab close)
   useEffect(() => {
-    return () => {
+    const closeCurrent = () => {
       const sid = sessionRef.current;
-      if (sid) {
+      if (!sid) return;
+      sessionRef.current = null;
+      // sendBeacon is the only thing guaranteed to run on unload
+      try {
+        const url = `${process.env.REACT_APP_BACKEND_URL}/api/live/${sid}/close`;
+        const blob = new Blob(["{}"], { type: "application/json" });
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url, blob);
+        } else {
+          liveClose(sid).catch(() => {});
+        }
+      } catch {
         liveClose(sid).catch(() => {});
       }
+    };
+    window.addEventListener("pagehide", closeCurrent);
+    window.addEventListener("beforeunload", closeCurrent);
+    return () => {
+      window.removeEventListener("pagehide", closeCurrent);
+      window.removeEventListener("beforeunload", closeCurrent);
+      closeCurrent();
     };
   }, []);
 
@@ -166,10 +185,10 @@ export default function Live() {
     setLoading(true);
     markAction();
     try {
-      await fn();
-      const f = await liveFrame(sessionId, quality);
+      const res = await fn();
+      const f = res && res.frame ? res.frame : await liveFrame(sessionId, quality);
       setFrame(f);
-      if (f.nav_url) setAddr(f.nav_url);
+      if (f && f.nav_url) setAddr(f.nav_url);
     } catch (e) {
       const msg = e?.response?.data?.detail || e?.message || "Action failed";
       toast.error(msg);

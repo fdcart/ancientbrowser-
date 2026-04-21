@@ -206,9 +206,21 @@ app.post("/sessions", async (req, res) => {
     const id = crypto.randomBytes(12).toString("hex");
     const now = Date.now();
     sessions.set(id, { browser, context, page, createdAt: now, lastUsed: now, viewport: vp });
+    // Grab the first frame immediately so the client doesn't wait a full
+    // poll cycle to see pixels.
+    let first = null;
+    try {
+      first = await snapshot(page, 55);
+    } catch (_) { /* non-fatal */ }
     let title = "";
     try { title = await page.title(); } catch (_) { /* ignore */ }
-    res.json({ session_id: id, title, url: page.url(), viewport: vp });
+    res.json({
+      session_id: id,
+      title,
+      url: page.url(),
+      viewport: vp,
+      frame: first,
+    });
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) });
   }
@@ -245,7 +257,8 @@ app.post(
     }
     await s.page.mouse.click(x, y);
     await s.page.waitForTimeout(250);
-    res.json({ ok: true });
+    const frame = await snapshot(s.page, 55).catch(() => null);
+    res.json({ ok: true, frame });
   })
 );
 
@@ -256,7 +269,8 @@ app.post(
     const amt = typeof dy === "number" ? dy : 400;
     await s.page.mouse.wheel(0, amt);
     await s.page.waitForTimeout(150);
-    res.json({ ok: true });
+    const frame = await snapshot(s.page, 55).catch(() => null);
+    res.json({ ok: true, frame });
   })
 );
 
@@ -270,7 +284,8 @@ app.post(
     await s.page.keyboard.type(text, { delay: 10 });
     if (submit) await s.page.keyboard.press("Enter");
     await s.page.waitForTimeout(300);
-    res.json({ ok: true });
+    const frame = await snapshot(s.page, 55).catch(() => null);
+    res.json({ ok: true, frame });
   })
 );
 
@@ -290,7 +305,8 @@ app.post(
     } else {
       return res.status(400).json({ error: "url or action required" });
     }
-    res.json({ ok: true, url: s.page.url() });
+    const frame = await snapshot(s.page, 55).catch(() => null);
+    res.json({ ok: true, url: s.page.url(), frame });
   })
 );
 

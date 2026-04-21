@@ -172,7 +172,7 @@ async def live_start(body: StartLiveRequest, request: Request):
     except worker_client.WorkerUnavailable:
         _unavail_error()
     except worker_client.WorkerError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return res
 
 
@@ -183,7 +183,7 @@ async def live_frame(session_id: str, q: int = 55):
     except worker_client.WorkerUnavailable:
         _unavail_error()
     except worker_client.WorkerError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 @api.post("/live/{session_id}/click")
@@ -193,7 +193,7 @@ async def live_click(session_id: str, body: ClickRequest):
     except worker_client.WorkerUnavailable:
         _unavail_error()
     except worker_client.WorkerError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 @api.post("/live/{session_id}/scroll")
@@ -203,7 +203,7 @@ async def live_scroll(session_id: str, body: ScrollRequest):
     except worker_client.WorkerUnavailable:
         _unavail_error()
     except worker_client.WorkerError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 @api.post("/live/{session_id}/type")
@@ -213,7 +213,7 @@ async def live_type(session_id: str, body: TypeRequest):
     except worker_client.WorkerUnavailable:
         _unavail_error()
     except worker_client.WorkerError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 @api.post("/live/{session_id}/navigate")
@@ -228,7 +228,7 @@ async def live_navigate(session_id: str, body: NavigateRequest):
     except worker_client.WorkerUnavailable:
         _unavail_error()
     except worker_client.WorkerError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 @api.post("/live/{session_id}/close")
@@ -239,7 +239,7 @@ async def live_close(session_id: str):
         # Treat as already gone
         return {"ok": True, "closed": True, "detail": "worker unavailable"}
     except worker_client.WorkerError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 app.include_router(api)

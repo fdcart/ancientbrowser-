@@ -21,7 +21,9 @@ class WorkerUnavailable(Exception):
 
 
 class WorkerError(Exception):
-    pass
+    def __init__(self, message: str, status_code: int = 502):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 def _worker_url() -> Optional[str]:
@@ -74,7 +76,7 @@ async def _request(method: str, path: str, json: Optional[dict] = None, timeout:
             detail = body.get("error") or body.get("detail") or body
         except Exception:  # noqa: BLE001
             detail = r.text[:200]
-        raise WorkerError(f"Worker error {r.status_code}: {detail}")
+        raise WorkerError(f"Worker error {r.status_code}: {detail}", status_code=r.status_code)
 
     # Screenshot endpoint returns JSON with base64 already; all endpoints JSON.
     try:
