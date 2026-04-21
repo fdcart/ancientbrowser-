@@ -1,10 +1,9 @@
-# Do NOT ship the worker or local dev artifacts to Vercel.
+# Do NOT ship to Vercel (keeps the deploy lean).
 worker/
 node_modules/
 frontend/node_modules/
 frontend/build/
 backend/__pycache__/
-api/__pycache__/
 **/__pycache__/
 .venv/
 .pytest_cache/
@@ -14,8 +13,8 @@ memory/
 *.log
 .DS_Store
 
-# local env overrides
-.env
+# local env overrides (secrets live in Vercel Project → Environment Variables)
+frontend/.env
 frontend/.env.local
 backend/.env
 
