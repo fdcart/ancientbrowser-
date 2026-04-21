@@ -110,6 +110,10 @@ async def type_text(session_id: str, text: str, submit: bool = False) -> dict:
     )
 
 
+async def press_key(session_id: str, key: str) -> dict:
+    return await _request("POST", f"/sessions/{session_id}/key", json={"key": key})
+
+
 async def navigate(session_id: str, url: Optional[str] = None, action: Optional[str] = None) -> dict:
     body: dict = {}
     if url:

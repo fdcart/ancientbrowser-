@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronUp, ChevronDown, Power, Send, BookOpen } from "lucide-react";
+import { ChevronUp, ChevronDown, Power, Send, BookOpen, Maximize2, Minimize2, Keyboard } from "lucide-react";
 import { toast } from "sonner";
 
 import BrowserShell from "@/components/browser/BrowserShell";
@@ -13,6 +13,7 @@ import {
   liveClick,
   liveScroll,
   liveType,
+  liveKey,
   liveNavigate,
   liveClose,
 } from "@/lib/api";
@@ -42,9 +43,12 @@ export default function Live() {
   const [quality, setQuality] = useState(55);
   const [typeValue, setTypeValue] = useState("");
   const [idleWarned, setIdleWarned] = useState(false);
+  const [kbFocused, setKbFocused] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const lastActionRef = useRef(Date.now());
   const pollRef = useRef(null);
   const sessionRef = useRef(null);
+  const stageRef = useRef(null);
 
   const markAction = () => {
     lastActionRef.current = Date.now();
@@ -210,6 +214,14 @@ export default function Live() {
     await handleAction(() => liveType(sessionId, typeValue, true));
     setTypeValue("");
   };
+  const onViewportType = (text) => {
+    if (!sessionId || !text) return;
+    handleAction(() => liveType(sessionId, text, false));
+  };
+  const onViewportKey = (key) => {
+    if (!sessionId || !key) return;
+    handleAction(() => liveKey(sessionId, key));
+  };
   const onNav = (action) => handleAction(() => liveNavigate(sessionId, { action }));
   const onTerminate = async () => {
     if (sessionId) {
@@ -225,6 +237,58 @@ export default function Live() {
     setFrame(null);
     toast.success("Session terminated");
   };
+
+  const toggleFullscreen = () => {
+    const el = stageRef.current;
+    if (!el) return;
+    // Prefer the real Fullscreen API when available (modern browsers).
+    // iOS 12 Safari doesn't support it — fall back to a CSS class that
+    // covers the viewport.
+    const doc = document;
+    const isFs =
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.msFullscreenElement;
+    try {
+      if (!isFs && !fullscreen) {
+        if (el.requestFullscreen) {
+          el.requestFullscreen().catch(() => setFullscreen(true));
+        } else if (el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+          el.msRequestFullscreen();
+        } else {
+          setFullscreen(true); // pseudo-fullscreen (CSS fallback)
+        }
+      } else {
+        if (doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
+        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+        else if (doc.msExitFullscreen) doc.msExitFullscreen();
+        setFullscreen(false);
+      }
+    } catch (e) {
+      // any error → toggle CSS fallback so user isn't stuck
+      setFullscreen((v) => !v);
+    }
+  };
+
+  // keep React state in sync with real fullscreen changes (Esc key)
+  useEffect(() => {
+    const handler = () => {
+      const active = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
+      );
+      setFullscreen(active);
+    };
+    document.addEventListener("fullscreenchange", handler);
+    document.addEventListener("webkitfullscreenchange", handler);
+    return () => {
+      document.removeEventListener("fullscreenchange", handler);
+      document.removeEventListener("webkitfullscreenchange", handler);
+    };
+  }, []);
 
   const tabs = useMemo(
     () => [{ id: "live", title: addr || "Live" }],
@@ -304,10 +368,18 @@ export default function Live() {
       }}
       banner={banner}
     >
-      <div className="cb-live" data-testid="live-container">
+      <div
+        ref={stageRef}
+        className={`cb-live ${fullscreen ? "cb-fs" : ""}`}
+        data-testid="live-container"
+      >
         <LiveViewport
           frame={frame}
           onClickCoord={onClickCoord}
+          onTypeText={onViewportType}
+          onKeyPress={onViewportKey}
+          focused={kbFocused}
+          onFocusedChange={setKbFocused}
           status={status}
           message={
             status === "unavailable"
@@ -338,6 +410,23 @@ export default function Live() {
             <ChevronDown size={14} style={{ verticalAlign: -2 }} /> Scroll down
           </button>
 
+          <button
+            type="button"
+            className="cb-btn"
+            onClick={toggleFullscreen}
+            disabled={!frame}
+            data-testid="live-fullscreen-btn"
+            aria-pressed={fullscreen}
+            title={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {fullscreen ? (
+              <Minimize2 size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+            ) : (
+              <Maximize2 size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+            )}
+            {fullscreen ? "Exit fullscreen" : "Fullscreen"}
+          </button>
+
           <span className="cb-quality" data-testid="live-quality">
             <label htmlFor="cb-q">Quality</label>
             <select
@@ -365,15 +454,18 @@ export default function Live() {
             Terminate
           </button>
 
-          <span className="cb-live-hint">
-            Tap the page to click · polling every {POLL_MS / 1000}s
+          <span className="cb-live-hint" data-testid="live-hint">
+            <Keyboard size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
+            {kbFocused
+              ? "Keyboard active — typing goes to the remote page"
+              : "Tap the page to enable keyboard · polling every " + POLL_MS / 1000 + "s"}
           </span>
         </div>
 
         <div className="cb-live-typebox" data-testid="live-typebox">
           <input
             type="text"
-            placeholder="Type into focused input (press Enter to submit)"
+            placeholder="Or type here & press Enter (submits to focused input on page)"
             value={typeValue}
             onChange={(e) => setTypeValue(e.target.value)}
             onKeyDown={(e) => {

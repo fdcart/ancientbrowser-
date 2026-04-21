@@ -586,6 +586,35 @@ button {
     gap: 10px;
     min-height: calc(100vh - 120px);
 }
+
+/* Pseudo-fullscreen fallback for iOS 12 Safari (no Fullscreen API) */
+.cb-live.cb-fs {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 9999;
+    padding: 8px;
+    min-height: 100vh;
+}
+.cb-live.cb-fs .cb-live-frame {
+    flex: 1;
+    min-height: 0;
+}
+.cb-live.cb-fs .cb-live-frame img {
+    width: 100%;
+    height: auto;
+    max-height: calc(100vh - 160px);
+    object-fit: contain;
+}
+/* Real Fullscreen API path */
+.cb-live:fullscreen {
+    background: var(--cb-surface-2);
+    padding: 8px;
+}
+.cb-live:-webkit-full-screen {
+    background: var(--cb-surface-2);
+    padding: 8px;
+}
+
 .cb-live-frame {
     background: #000;
     border: 1px solid var(--cb-border);
@@ -595,6 +624,37 @@ button {
     position: relative;
     cursor: crosshair;
     min-height: 320px;
+    outline: none;
+}
+.cb-live-frame.kbd-focus {
+    border-color: var(--cb-accent);
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.20), var(--cb-shadow-1);
+}
+.cb-kbd-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(26, 115, 232, 0.92);
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    border-radius: 12px;
+    pointer-events: none;
+}
+.cb-kbd-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff;
+    animation: cb-pulse 1.2s ease-in-out infinite;
+}
+@keyframes cb-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
 }
 .cb-live-frame img {
     display: block;

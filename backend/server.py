@@ -84,6 +84,10 @@ class TypeRequest(BaseModel):
     submit: bool = False
 
 
+class KeyRequest(BaseModel):
+    key: str
+
+
 class NavigateRequest(BaseModel):
     url: Optional[str] = None
     action: Optional[str] = None  # "back" | "forward" | "reload"
@@ -210,6 +214,16 @@ async def live_scroll(session_id: str, body: ScrollRequest):
 async def live_type(session_id: str, body: TypeRequest):
     try:
         return await worker_client.type_text(session_id, body.text, submit=body.submit)
+    except worker_client.WorkerUnavailable:
+        _unavail_error()
+    except worker_client.WorkerError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@api.post("/live/{session_id}/key")
+async def live_key(session_id: str, body: KeyRequest):
+    try:
+        return await worker_client.press_key(session_id, body.key)
     except worker_client.WorkerUnavailable:
         _unavail_error()
     except worker_client.WorkerError as exc:

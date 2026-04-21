@@ -289,6 +289,29 @@ app.post(
   })
 );
 
+// Single key press — used for Enter, Backspace, Tab, Arrow keys, etc.
+// Playwright accepts key names like "Enter", "Backspace", "ArrowUp",
+// "Escape", "Home", "End", "PageDown", "Delete", "Tab".
+const ALLOWED_KEYS = new Set([
+  "Enter", "Backspace", "Delete", "Tab", "Escape", "Space",
+  "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+  "Home", "End", "PageUp", "PageDown",
+]);
+
+app.post(
+  "/sessions/:id/key",
+  withSession(async (s, req, res) => {
+    const { key } = req.body || {};
+    if (typeof key !== "string" || !ALLOWED_KEYS.has(key)) {
+      return res.status(400).json({ error: "unsupported key" });
+    }
+    await s.page.keyboard.press(key);
+    await s.page.waitForTimeout(120);
+    const frame = await snapshot(s.page, 55).catch(() => null);
+    res.json({ ok: true, frame });
+  })
+);
+
 app.post(
   "/sessions/:id/navigate",
   withSession(async (s, req, res) => {

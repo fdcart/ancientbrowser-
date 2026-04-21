@@ -38,6 +38,11 @@ export async function liveType(sessionId, text, submit = false) {
   return res.data;
 }
 
+export async function liveKey(sessionId, key) {
+  const res = await http.post(`/live/${sessionId}/key`, { key });
+  return res.data;
+}
+
 export async function liveNavigate(sessionId, { url, action } = {}) {
   const res = await http.post(`/live/${sessionId}/navigate`, { url, action });
   return res.data;
