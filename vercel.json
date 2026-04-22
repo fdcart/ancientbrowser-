@@ -3,7 +3,8 @@
         "frontend": {
             "entrypoint": "frontend",
             "routePrefix": "/",
-            "framework": "create-react-app"
+            "framework": "create-react-app",
+            "installCommand": "npm install --legacy-peer-deps"
         },
         "backend": {
             "entrypoint": "backend",
