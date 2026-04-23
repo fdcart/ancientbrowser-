@@ -57,8 +57,9 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "craco build",
-    "test": "craco test"
+    "build": "npm run prebuild:deps && craco build",
+    "test": "craco test",
+    "prebuild:deps": "npm install --no-save ajv@6.12.6 ajv-keywords@3.5.2"
   },
   "browserslist": {
     "production": [
