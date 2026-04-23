@@ -118,7 +118,8 @@ export default function Live() {
       sessionRef.current = null;
       // sendBeacon is the only thing guaranteed to run on unload
       try {
-        const url = `${process.env.REACT_APP_BACKEND_URL}/api/live/${sid}/close`;
+        const base = (process.env.REACT_APP_BACKEND_URL || "/_/backend").replace(/\/+$/, "");
+        const url = `${base}/api/live/${sid}/close`;
         const blob = new Blob(["{}"], { type: "application/json" });
         if (navigator.sendBeacon) {
           navigator.sendBeacon(url, blob);
