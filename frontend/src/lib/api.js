@@ -1,59 +1,76 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
-export const API = `${BACKEND_URL}/api`;
+const RAW_BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
+const BACKEND_URL = RAW_BACKEND_URL.replace(/\/+$/, "");
 
-export const http = axios.create({
-  baseURL: API,
-  timeout: 30000,
-});
+const BASE_CANDIDATES = Array.from(
+  new Set(
+    [BACKEND_URL, "/_/backend", ""]
+      .map((v) => (v || "").replace(/\/+$/, ""))
+  )
+);
+
+async function apiRequest(method, path, data) {
+  let lastErr;
+  for (const base of BASE_CANDIDATES) {
+    const url = `${base}/api${path}`;
+    try {
+      const res = await axios({
+        method,
+        url,
+        data,
+        timeout: 30000,
+      });
+      return res.data;
+    } catch (err) {
+      const status = err?.response?.status;
+      // Route mismatch on one base path? Try next candidate.
+      if (status === 404 || status === 405) {
+        lastErr = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr || new Error("API request failed");
+}
 
 export async function openReader(url) {
-  const res = await http.post("/reader/open", { url });
-  return res.data;
+  return apiRequest("post", "/reader/open", { url });
 }
 
 export async function liveStart(url) {
-  const res = await http.post("/live/start", { url });
-  return res.data;
+  return apiRequest("post", "/live/start", { url });
 }
 
 export async function liveFrame(sessionId, quality = 55) {
-  const res = await http.get(`/live/${sessionId}/frame?q=${quality}`);
-  return res.data;
+  return apiRequest("get", `/live/${sessionId}/frame?q=${quality}`);
 }
 
 export async function liveClick(sessionId, x, y) {
-  const res = await http.post(`/live/${sessionId}/click`, { x, y });
-  return res.data;
+  return apiRequest("post", `/live/${sessionId}/click`, { x, y });
 }
 
 export async function liveScroll(sessionId, dy) {
-  const res = await http.post(`/live/${sessionId}/scroll`, { dy });
-  return res.data;
+  return apiRequest("post", `/live/${sessionId}/scroll`, { dy });
 }
 
 export async function liveType(sessionId, text, submit = false) {
-  const res = await http.post(`/live/${sessionId}/type`, { text, submit });
-  return res.data;
+  return apiRequest("post", `/live/${sessionId}/type`, { text, submit });
 }
 
 export async function liveKey(sessionId, key) {
-  const res = await http.post(`/live/${sessionId}/key`, { key });
-  return res.data;
+  return apiRequest("post", `/live/${sessionId}/key`, { key });
 }
 
 export async function liveNavigate(sessionId, { url, action } = {}) {
-  const res = await http.post(`/live/${sessionId}/navigate`, { url, action });
-  return res.data;
+  return apiRequest("post", `/live/${sessionId}/navigate`, { url, action });
 }
 
 export async function liveClose(sessionId) {
-  const res = await http.post(`/live/${sessionId}/close`, {});
-  return res.data;
+  return apiRequest("post", `/live/${sessionId}/close`, {});
 }
 
 export async function getHealth() {
-  const res = await http.get("/health");
-  return res.data;
+  return apiRequest("get", "/health");
 }
