@@ -29,6 +29,13 @@ const QUALITIES = [
   { label: "High", value: 75 },
 ];
 
+function normalizeLiveUrl(input) {
+  const raw = (input || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+}
+
 export default function Live() {
   const [params] = useSearchParams();
   const urlParam = params.get("url") || "";
@@ -61,12 +68,12 @@ export default function Live() {
       setError(null);
       setFrame(null);
       try {
-        const res = await liveStart(target);
+        const res = await liveStart(normalizeLiveUrl(target));
         setSessionId(res.session_id);
         sessionRef.current = res.session_id;
         if (res.frame) setFrame(res.frame);
         setStatus("ready");
-        addRecent({ url: target, title: res.title || target });
+        addRecent({ url: normalizeLiveUrl(target), title: res.title || target });
         markAction();
       } catch (e) {
         if (e?.response?.status === 503) {
@@ -202,7 +209,7 @@ export default function Live() {
   };
 
   const addrSubmit = (v) => {
-    const val = (v || "").trim();
+    const val = normalizeLiveUrl(v);
     if (!val) return;
     navigate(`/live?url=${encodeURIComponent(val)}`);
   };
