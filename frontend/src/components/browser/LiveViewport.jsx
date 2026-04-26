@@ -60,8 +60,12 @@ export default function LiveViewport({
     const img = imgRef.current;
     const rect = img.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
+    const touch = e.touches && e.touches[0] ? e.touches[0] : e.changedTouches && e.changedTouches[0];
+    const clientX = touch ? touch.clientX : e.clientX;
+    const clientY = touch ? touch.clientY : e.clientY;
+    if (typeof clientX !== "number" || typeof clientY !== "number") return;
+    const px = clientX - rect.left;
+    const py = clientY - rect.top;
     const scaleX = frame.width / rect.width;
     const scaleY = frame.height / rect.height;
     onClickCoord && onClickCoord(Math.round(px * scaleX), Math.round(py * scaleY));
@@ -115,6 +119,7 @@ export default function LiveViewport({
       ref={containerRef}
       className={`cb-live-frame ${focused ? "kbd-focus" : ""}`}
       onClick={handleClick}
+      onTouchStart={handleClick}
       onKeyDown={handleKeyDown}
       onFocus={() => onFocusedChange && onFocusedChange(true)}
       onBlur={() => {
