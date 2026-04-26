@@ -86,15 +86,15 @@
     "globals": "15.15.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "ajv": "^8.17.1",
-    "ajv-keywords": "^5.1.0"
+    "ajv": "6.12.6",
+    "ajv-keywords": "3.5.2"
   },
   "packageManager": "npm@11.12.1",
   "engines": {
     "node": "20.x"
   },
   "overrides": {
-    "ajv": "^8.17.1",
-    "ajv-keywords": "^5.1.0"
+    "ajv": "6.12.6",
+    "ajv-keywords": "3.5.2"
   }
 }
